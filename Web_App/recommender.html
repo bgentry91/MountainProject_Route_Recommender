@@ -1,0 +1,379 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <base target="_blank"/>
+    <meta charset="utf-8" />
+    <title>Climbing Recommender</title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type = "text/javascript">
+
+      //hiding buttons, showing load gif, etc when submit is clicked
+      function hide() {
+        var x = document.getElementById("my-button");
+        var y = document.getElementById("loading");
+        var z = document.getElementById("error");
+        z.style.display = "none"
+        x.style.visibility = "hidden";
+        y.style.display = "block";
+      }
+
+      //showing buttons, getting rid of load gif once routes are returned
+      function show() {
+        var x = document.getElementById("my-button");
+        var y = document.getElementById("loading");
+        y.style.display = "none"
+        x.style.visibility = "visible"
+      }
+
+      //simple error function for bad post
+      function error_func() {
+        var x = document.getElementById("error");
+        x.style.display = "block"
+      }
+
+      //creating dropdown list options for given area
+      function create_select(loc_list, locID){
+        var output_string = "<option value =''></option>"
+        for (var i = 0; i < loc_list.length; i++) {
+          output_string = output_string + "<option value='" + loc_list[i] + "'>" + loc_list[i] + "</option>";
+        }
+        document.getElementById(locID).innerHTML = output_string;
+      }
+
+      //building route recommendations & links
+      function output_routes(route_list, route_names){
+        var output_string = "<h3>Route Recommendations:</h3><span style='display:inline-block; width: 40px;''></span>";
+        for (var i = 0; i < route_list.length; i++) {
+          output_string = output_string + (i+1) + ". " 
+                          + "<a href='" + route_list[i] + "'>" 
+                          + route_names[i] + "</a>" 
+                          + "<br><span style='display:inline-block; width: 40px;''></span>" ;
+        }
+        output_string = output_string + "<br>"
+        document.getElementById("output").innerHTML = output_string;
+      }
+
+      //use ajax to post filter info & return recommendations
+      function get_rec(){
+        var email = document.getElementById("txtEmail").value;
+        var mindiff = document.getElementById("MinDiff").value;
+        var maxdiff = document.getElementById("MaxDiff").value;
+        var stars = document.getElementById("Stars").value;
+        var type = document.getElementById("Type").value;
+        var radius = document.getElementById("Radius").value;
+        var rpd = document.getElementById("rpd").value;
+        var loc1 = document.getElementById("Loc1").value;
+        var loc2 = document.getElementById("Loc2").value;
+        var loc3 = document.getElementById("Loc3").value;
+        var loc4 = document.getElementById("Loc4").value;
+
+        d = {};
+        d['email'] = email;
+        d['min_diff'] = mindiff;
+        d['max_diff'] = maxdiff;
+        d['stars'] = stars;
+        d['type'] = type;
+        d['radius'] = radius;
+        d['rpd'] = rpd;
+        d['loc1'] = loc1;
+        d['loc2'] = loc2;
+        d['loc3'] = loc3;
+        d['loc4'] = loc4;
+        d_str = JSON.stringify(d);
+        hide();
+        $.ajax({
+         type: "POST",
+         contentType: "application/json; charset=utf-8",
+         url: "/routes",
+         dataType: "json",
+         async: true,
+         data: d_str,
+         success: function (data) {
+           var route_list = data["url"];
+           var map_url = data["map_url"];
+           var name_list = data["name_list"];
+           document.getElementById("my-iframe").src = get_url(map_url)
+           output_routes(route_list, name_list);
+           show();
+         },
+         error: function (result) {
+            show()
+            error_func()
+           }
+           
+       })
+     }
+
+     //ajax to deal with getting/sending info for area dropdowns
+    function get_loc(select_obj){
+        if (select_obj == 'Loc2') {
+         create_select([],"Loc4");
+         create_select([],"Loc3");
+         create_select([],"Loc2");
+        }
+        if (select_obj == 'Loc3') {
+         create_select([],"Loc3");
+         create_select([],"Loc4");
+        }
+        if (select_obj == 'Loc4') {
+         create_select([],"Loc4");
+        }
+
+        var loc1 = document.getElementById("Loc1").value;
+        var loc2 = document.getElementById("Loc2").value;
+        var loc3 = document.getElementById("Loc3").value;
+        var d = {};
+        d['loc1'] = loc1;
+        d['loc2'] = loc2;
+        d['loc3'] = loc3;
+        var d_str = JSON.stringify(d); 
+        $.ajax({
+         type: "POST",
+         contentType: "application/json; charset=utf-8",
+         url: "/loc",
+         dataType: "json",
+         async: true,
+         data: d_str,
+         success: function (data) {
+            var loc_list = data["loc"];
+            //remove map and recommendations if you change your area filters
+            if (loc_list[0] == "0") {loc_list=[]}
+            create_select(loc_list, select_obj);
+            document.getElementById("my-div").innerHTML = "<iframe id='my-iframe' scrolling='yes' height='350' width ='350' src=''></iframe>" +
+                  "<script>" +
+                  "document.getElementById('my-iframe').src = get_url('initial'); &lt/script&gt";
+         },
+         error: function (result) {
+            error_func()
+           }
+           
+       })
+     }
+
+    //getting url from python/selenium for iframe
+    function get_url(url_str){
+        if (url_str == 'initial') {
+          url = 'https://www.darrinward.com/lat-long/?id=5a9447e7923ee2.78009853&labels_show=1&labels_type=line_numbers&line_show=1'
+        }
+        else
+        {
+          url = 'https://www.darrinward.com/lat-long/?id=' +url_str+ '&labels_show=1&labels_type=line_numbers&line_show=1'
+        }
+        return url
+      }
+     </script>
+     <style>
+     #my-div
+      {
+          width    : 1200px;
+          height   : 550px;
+          overflow : hidden;
+          position : absolute;
+      }
+    #my-iframe
+      {
+          position : absolute;
+          top      : 0px;
+          left     : -293px;
+          width    : 1200px;
+          height   : 550px;
+      }
+    #my-button{
+    }
+    #loading {
+          position: relative; 
+          width: 100px; 
+          height: 100px; 
+          background: url('http://thinkfuture.com/wp-content/uploads/2013/10/loading_spinner.gif') no-repeat center center;
+          display: none;
+    }
+    #error {
+      display:none;
+      color: red;
+      font-weight: bold;
+      ;
+    }
+    #output{
+      h3{margin-bottom: 3px;}
+    }
+
+
+   </style>
+
+  </head>
+
+  <body onload="get_loc('Loc1');", style='font-family: Arial; font-size:15px; background-color:#F5F5F5'>
+    <h3 style = 'font-size:30px'>Climbing Day Recommender</h3>
+
+    <div id="error"> Error Loading - Please Retry. </div>
+
+    <!---Filters!! -->
+    <div style="width:913px;">
+       <form action = >
+        <fieldset>
+        <label>E-Mail (Required): </label>
+        <input type = "text"
+          id = "txtEmail" />
+       </form>
+       <br><br>
+       <form action="/action_page.php">
+          Minimum Difficulty:
+          <select id="MinDiff">
+            <option value =""></option>
+            <option value="5.00">5.0</option>
+            <option value="5.01">5.1</option>
+            <option value="5.02">5.2</option>
+            <option value="5.03">5.3</option>
+            <option value="5.04">5.4</option>
+            <option value="5.05">5.5</option>
+            <option value="5.06">5.6</option>
+            <option value="5.07">5.7</option>
+            <option value="5.08">5.8</option>
+            <option value="5.09">5.9</option>
+            <option value="5.10a">5.10a</option>
+            <option value="5.10b">5.10b</option>
+            <option value="5.10c">5.10c</option>
+            <option value="5.10d">5.10d</option>
+            <option value="5.11a">5.11a</option>
+            <option value="5.11b">5.11b</option>
+            <option value="5.11c">5.11c</option>
+            <option value="5.11d">5.11d</option>
+            <option value="5.12a">5.12a</option>
+            <option value="5.12b">5.12b</option>
+            <option value="5.12c">5.12c</option>
+            <option value="5.12d">5.12d</option>
+            <option value="5.13a">5.13a</option>
+            <option value="5.13b">5.13b</option>
+            <option value="5.13c">5.13c</option>
+            <option value="5.13d">5.13d</option>
+            <option value="5.14a">5.14a</option>
+            <option value="5.14b">5.14b</option>
+            <option value="5.14c">5.14c</option>
+            <option value="5.14d">5.14d</option>
+            <option value="5.15a">5.15a</option>
+            <option value="5.15b">5.15b</option>
+            <option value="5.15c">5.15c</option>
+            <option value="5.15d">5.15d</option>
+          </select>
+          <span style="display:inline-block; width: 20px;"></span>
+          Maximum Difficulty:
+          <select id="MaxDiff">
+            <option value =""></option>
+            <option value="5.0">5.0</option>
+            <option value="5.1">5.1</option>
+            <option value="5.2">5.2</option>
+            <option value="5.3">5.3</option>
+            <option value="5.4">5.4</option>
+            <option value="5.5">5.5</option>
+            <option value="5.6">5.6</option>
+            <option value="5.7">5.7</option>
+            <option value="5.8">5.8</option>
+            <option value="5.9">5.9</option>
+            <option value="5.10a">5.10a</option>
+            <option value="5.10b">5.10b</option>
+            <option value="5.10c">5.10c</option>
+            <option value="5.10d">5.10d</option>
+            <option value="5.11a">5.11a</option>
+            <option value="5.11b">5.11b</option>
+            <option value="5.11c">5.11c</option>
+            <option value="5.11d">5.11d</option>
+            <option value="5.12a">5.12a</option>
+            <option value="5.12b">5.12b</option>
+            <option value="5.12c">5.12c</option>
+            <option value="5.12d">5.12d</option>
+            <option value="5.13a">5.13a</option>
+            <option value="5.13b">5.13b</option>
+            <option value="5.13c">5.13c</option>
+            <option value="5.13d">5.13d</option>
+            <option value="5.14a">5.14a</option>
+            <option value="5.14b">5.14b</option>
+            <option value="5.14c">5.14c</option>
+            <option value="5.14d">5.14d</option>
+            <option value="5.15a">5.15a</option>
+            <option value="5.15b">5.15b</option>
+            <option value="5.15c">5.15c</option>
+            <option value="5.15d">5.15d</option>
+          </select>
+          <span style="display:inline-block; width: 20px;"></span>
+          Minimum Stars:
+          <select id="Stars">
+            <option value=0>0</option>
+            <option value=1>1</option>
+            <option value=2 selected>2</option>
+            <option value=3>3</option>
+            <option value=4>4</option>
+          </select>
+          <span style="display:inline-block; width: 20px;"></span>
+          Type:
+          <select id="Type">
+            <option value="Any">Any</option>
+            <option value="Trad">Trad</option>
+            <option value="Sport">Sport</option>
+            <option value="TR">TR</option>
+          </select>
+          <br>
+          <br>
+          Radius (mi):
+          <select id="Radius">
+            <option value=.25>0.25</option>
+            <option value=.5 selected>0.5</option>
+            <option value=1>1</option>
+            <option value=1.5>1.5</option>
+            <option value=2>2</option>
+            <option value=5>5</option>
+            <option value=10>10</option>
+          </select>
+          <span style="display:inline-block; width: 20px;"></span>
+          Routes/Day:
+          <select id="rpd">
+            <option value=1>1</option>
+            <option value=3>3</option>
+            <option value=5>5</option>
+            <option value=6>6</option>
+            <option value=7>7</option>
+            <option value=8 selected>8</option>
+            <option value=9>9</option>
+            <option value=10>10</option>
+            <option value=15>15</option>
+          </select>
+          <br>
+          <br>
+          State:     
+          <span style="display:inline-block; width: 5px;"></span>
+          <select id="Loc1", onchange="get_loc('Loc2')">
+          </select>
+          <span style="display:inline-block; width: 20px;"></span>
+          Sub-Area 1:
+          <span style="display:inline-block; width: 5px;"></span>
+          <select id="Loc2", onchange="get_loc('Loc3')">
+          </select>
+          <br>
+          <br>
+          Sub-Area 2:
+          <span style="display:inline-block; width: 5px;"></span>
+          <select id="Loc3", onchange="get_loc('Loc4')">
+          </select>
+          <span style="display:inline-block; width: 20px;"></span>
+          Sub-Area 3:
+          <span style="display:inline-block; width: 5px;"></span>
+          <select id="Loc4", style="font-size: 13px">
+          </select>
+          <br>
+          <br>
+          <input 
+          type = "button"
+          value = "Submit"
+          id = "my-button"
+          onclick = "get_rec()"/>
+        </form>
+    </div>
+
+    <div id="loading"></div>
+    <div id='output'></div>
+    <div id="my-div">
+
+    </div>
+
+  </body>
+</html>
